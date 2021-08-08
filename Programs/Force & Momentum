@@ -1,0 +1,95 @@
+GlowScript 3.1 VPython
+# Canvas display
+scene.title = "<b>FORCE & MOMENTUM</b>"
+h = 600
+w = 600
+scene.width = w
+scene.height = h
+hw = 1 # half width
+scene.fov = 0.001
+scene.range = hw
+scene.background = color.yellow
+scene.opacity = 0.01
+
+def display_instructions():
+    s = """
+<b>Instructions</b>:
+Drag the ball (green arrow)
+<span style='color: #009900'><b>Green arrow</b></span> = Net Force
+<span2 style='color: #FF0000'><b>Red arrow</b></span2> = Momentum
+
+<i>To zoom, drag with middle button or use scroll wheel
+
+<b>Tip:</b> Drag and hold (Force / green) arrow in a fixed location for the ball to follow 
+       a circular or elliptical shaped orbit</i>"""
+    scene.caption = s
+    scene.append_to_caption('\n\n')
+display_instructions()
+
+# Making the gridlines
+gridd = 0.5*hw
+gridr = 2*hw+gridd
+R = .02*gridd
+gridlines = []
+for x in range(-gridr, gridr+gridd/2, gridd):
+    gridlines.append(box(pos=vector(x,0,0), size=vector(2*gridr,R,R), axis=vector(0,1,0), color=color.black))
+for y in range(-gridr, gridr+gridd/2, gridd):
+    gridlines.append(box(pos=vector(0,y,0), size=vector(2*gridr,R,R), color=color.black))
+
+
+# Ball settings and constant / initial physical properties
+ball = sphere(pos=vector(0,0,0), size = vector(0.1,0.1,0.1), color=color.black)
+ball_trail = attach_trail(ball, type = "points", pps = 20, retain = 10000, color=color.black)
+Rball = hw/20
+
+#scene.camera.follow(ball)
+
+
+run = True
+dt = 0.05
+ball.p = vector(0,0,0)
+ball.m = 200
+F = vector(0,0,0)
+
+Fmouse = 1 # F mouse scale factor
+Fview = 1 # F view scale factor
+pview = 0.025 # p view scale factor
+
+drag = False
+Foffset = vector(0,0,ball.size.y/2 )
+Fvector = arrow( pos=ball.pos+Foffset, axis=vector(0,0,0), shaftwidth=hw/30, color=color.green )
+pvector = arrow( pos=ball.pos+1.5*Foffset, axis=vector(0,0,0), shaftwidth=hw/30, color=color.red )
+
+def reset():
+    drag = False
+    ball_trail.clear()
+    ball.pos = ball.p = F = Fvector.axis = pvector.axis = vector(0,0,0)
+
+button(text='Reset', bind=reset)
+
+def up(ev):
+        global drag
+        drag = False
+        
+def down(ev):
+    global drag
+    drag = True
+    scene.bind("mouseup", up)
+
+scene.bind("mousedown", down)
+
+while run:
+    rate(200)
+    if drag: 
+        F = Fmouse*(scene.mouse.pos-ball.pos)
+    Fvector.axis = Fview*F
+    ball.p = ball.p + F*dt
+    ball.pos = ball.pos + (ball.p/ball.m)*dt
+    if abs(ball.pos.x)+Rball >= gridr: 
+        reset()
+    if abs(ball.pos.y)+Rball >= gridr:
+        reset()
+    Fvector.pos = ball.pos+Foffset
+    Fvector.axis = Fview*F
+    pvector.pos = ball.pos+1.5*Foffset
+    pvector.axis = pview*ball.p
