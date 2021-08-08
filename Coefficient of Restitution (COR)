@@ -1,0 +1,86 @@
+GlowScript 3.1 VPython
+def display_instructions():
+    s = """
+<i>In GlowScript programs:
+    To rotate "camera" angle, drag with right button or Ctrl-drag
+    To zoom, drag with middle button or use scroll wheel
+    To pan left/right and up/down, Shift-drag
+    To resize display, drag bottom-right corner</i>
+    
+<i><b><span style="background-color: #FFFF00">Adjust the <span2 style="color: #FF0000">Coefficient of Restitution</span2> and <span3 style="color: #FF0000">Horizontal Velocity</span3> variable sliders</span></i></b>"""
+    scene.title = "<b>COEFFICIENT OF RESTITUTION (COR)</b>"
+    scene.caption = s
+    scene.append_to_caption('\n\n')
+    scene.width = 700
+display_instructions()
+
+run = False
+
+def runbutton(b): # Called when user clicks the Run/Pause button
+    global run
+    if run: b.text = '<b>Run<b>' # b references the button
+    else: b.text = '<b>Pause<b>'
+    run = not run
+button(text='<b>Run</b>', bind=runbutton, background=color.green)
+scene.append_to_caption(' ')
+
+def reset(c):
+    global t, ball
+    t = 0
+    ball.p = ball.m*vector(0,0,0)
+    ball.pos = vector(-5,10,0)
+    y.delete()
+
+c = button(text="<b>Reset</b>", bind=reset, background=color.red)
+scene.append_to_caption('\n\n')
+
+def S(arg):
+    global e
+    S_text.text = 'Coefficient of Restitution = '+'<b>{:1.3f}</b>'.format(S.value)
+    e = S.value
+S = slider(bind = S, min = 0.5, max = 1)
+scene.append_to_caption('    ')
+S_text = wtext(text='Coefficient of Restitution = '+'<b>{:1.3f}</b>'.format(S.value))
+
+scene.append_to_caption('\n\n')
+
+def H(arg2):
+    global h
+    H_text.text = 'Horizontal Speed = '+'<b>{:1.3f}</b>'.format(H.value)
+    h = H.value
+H = slider(bind = H, min = -0.04, max = 0.04)
+scene.append_to_caption('    ')
+H_text = wtext(text='Horizontal Speed = '+'<b>{:1.3f}</b>'.format(H.value))
+scene.append_to_caption('\n\n')
+
+
+floor = box(pos=vector(0,-0.5,0), size=vector(30,0.2,10), texture=textures.wood)
+
+ball = sphere(pos=vector(-5,10,0), radius=0.4, color=color.cyan, emissive = False)
+attach_trail(ball, color=color.orange, radius = 0.1, type = "points", pps = "25", retain = 30)
+L = local_light(pos=ball.pos, color=ball.color)
+
+ball.m = 0.5
+ball.p = ball.m*vector(0,0,0)
+g = 9.8
+attach_arrow(ball, 'p', color=color.orange) # Continually display an arrow representing ball.p
+
+graph(width=700, height=250, xtitle="<i>t</i>", ytitle="<i>s<sub>y</sub></i>", title = "Vertical displacement as a function of time, <i>s<sub>y</sub>(t)</i>",
+foreground=color.black, background=color.white, ymax = 20, ymin = 0, xmin = 0, xmax = 20, fast = False)
+y = gcurve(color=color.red)
+scene.autoscale = False
+
+t = 0
+dt = 0.01
+while True:
+    rate(200) # Don't execute more than 200 iterations per second
+    if run:
+        F = vector(0,-ball.m*g,0)
+        ball.p = ball.p + F*dt
+        ball.pos = ball.pos + (ball.p/ball.m)*dt
+        L.pos = ball.pos
+        ball.pos.x = ball.pos.x + h
+        if ball.pos.y < floor.pos.y + ball.radius: # if hit floor
+            ball.p.y = abs(ball.p.y)*e # Apply Newton's Third Law and applicable COR
+        t = t + dt
+        y.plot((t, ball.pos.y))
