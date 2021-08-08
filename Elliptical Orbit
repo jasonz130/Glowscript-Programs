@@ -1,0 +1,130 @@
+GlowScript 3.1 VPython
+scene=canvas(title = "<b>MODELLING ELLIPTICAL ORBIT</b>", width=1200)
+
+def display_instructions():
+    s = """
+<i>In GlowScript programs:
+    To rotate "camera" angle, drag with right button or Ctrl-drag
+    To zoom, drag with middle button or use scroll wheel                            
+    To pan left/right and up/down, Shift-drag                                       
+    To resize display, drag bottom-right corner</i>"""
+    scene.caption = s
+    scene.append_to_caption('\n\n')
+display_instructions()
+
+def Run(b):
+    global running
+    running = not running
+    if running: b.text = "<b>Pause</b>"
+    else: b.text = "<b>Run</b>"
+
+button(text="<b>Run</b>", background = color.yellow, bind=Run)
+scene.append_to_caption(' ')
+
+def reset(c):
+    global t
+    t = 0
+    mcentralBody
+    msatellite = 1.5e4
+    satellite.pos = vec(inisatposition,0,0)
+    satellite.vel = vec(0,inisatvel,0)
+    satellite.clear_trail()
+    s1.delete()
+    s2.delete()
+    s3.delete()
+    s4.delete()
+    s5.delete()
+c = button(text="<b>Apply Changes & Reset</b>", bind=reset, background=color.red)
+scene.append_to_caption('\n\n')
+
+#VARIABLE SLIDERS
+def R(arg):
+    global inisatvel
+    R_text.text = 'Initial Satellite Velocity (m/s) = '+'<b>{:1.0f}</b>'.format(R.value)
+    inisatvel = R.value
+R = slider(bind = R, min = -5e3, max = -5e2, value = -2e3)
+scene.append_to_caption('    ')
+R_text = wtext(text='Initial Satellite Velocity (m/s) = '+'<b>{:1.0f}</b>'.format(R.value))
+scene.append_to_caption('\n\n')
+
+def Q(arg2):
+    global inisatposition
+    Q_text.text = 'Initial Satellite Position (m) = '+'<b>{:1.0f}</b>'.format(Q.value)
+    inisatposition = Q.value
+Q = slider(bind = Q, min = -2.5e8, max = -6.4e7, value = -6.4e7)
+scene.append_to_caption('    ')
+Q_text = wtext(text='Initial Satellite Position (m) = '+'<b>{:1.0f}</b>'.format(Q.value))
+scene.append_to_caption('\n\n')
+
+def S(arg3):
+    global mcentralBody
+    S_text.text = 'Central Body Mass (kg) = '+'<b>{:1.0f}</b>'.format(S.value)
+    mcentralBody = S.value
+S = slider(bind = S, min = 6e23, max = 6e25, value = 6e24)
+scene.append_to_caption('    ')
+S_text = wtext(text='Central Body Mass (kg) = '+'<b>{:1.0f}</b>'.format(S.value))
+scene.append_to_caption('\n\n')
+
+inisatposition = -6.4e7
+inisatvel = -2e3
+
+#OBJECTS AND INITIAL VALUES
+centralBody = sphere(pos=vec(0,0,0), radius=6.4e6, color=color.cyan)
+satellite = sphere(pos=vec(inisatposition,0,0), radius=2e6, color=color.white, make_trail=True)
+
+v1arrow = arrow(pos=satellite.pos,color=color.green)
+Fg1arrow = arrow(pos=satellite.pos,color=color.cyan)
+post1=text(pos=vec(-8e7,5e7,0),height=4e6,text='cyan arrow = Fg',color=color.cyan, align = 'left')
+post2=text(pos=vec(-8e7,4e7,0),height=4e6,text='green arrow = Tangential v',color=color.green, align = 'left')
+
+
+#CONSTANTS
+G = 6.67e-11
+mcentralBody = 6e24
+msatellite = 1.5e4 #mass of satellite
+satellite.vel = vec(0,inisatvel,0)  #initial velocity of centralBody
+t = 0
+dt = 60
+v_scale = 6000
+Fg_scale = 3.7e3
+
+
+
+graph1 = gdisplay(title="Projected x-velocity versus Time:",xtitle='t (s)',ytitle='vx (m/s)', width = 400, align = 'left')
+s1=gcurve(color=color.black,label="satellite",graph=graph1) 
+
+graph2 = gdisplay(title="Projected y-velocity versus Time:",xtitle='t (s)',ytitle='vy (m/s)', width = 400, align = 'left')
+s2=gcurve(color=color.black,label="satellite",graph=graph2) 
+
+graph3 = gdisplay(title="Projected Energy versus Time:",xtitle='t (s)',ytitle='E (J)', width = 400, align = 'left')
+s3=gcurve(color=color.blue,label="KE",graph=graph3)
+s4=gcurve(color=color.red,label="PE",graph=graph3)
+s5=gcurve(color=color.green,label="U",graph=graph3)
+
+
+while t < 10*365*24*60*60:  #10 years
+    rate(1000)  
+    if running:
+      r = satellite.pos - centralBody.pos 
+      rmag = mag(r)
+      rhat = r/rmag
+      GravF = -G*(mcentralBody*msatellite/(rmag*rmag))*rhat
+      Fnet = GravF
+      satellite.vel = satellite.vel + (Fnet/msatellite)*dt
+      satellite.pos = satellite.pos + satellite.vel*dt
+      U = (0.5*msatellite*mag(satellite.vel)**2)+(msatellite*((-G*mcentralBody)/mag(r)**2)*mag(r))
+      KE = 0.5*msatellite*mag(satellite.vel)**2
+      PE = U-KE
+      
+      v1arrow.pos = satellite.pos
+      v1arrow.axis = satellite.vel*v_scale
+      Fg1arrow.pos = satellite.pos
+      Fg1arrow.axis = GravF*Fg_scale
+
+      t = t+dt
+      
+      s1.plot(t,satellite.vel.x)
+      s2.plot(t,satellite.vel.y)
+      s3.plot(t, KE)
+      s4.plot(t, PE)
+      s5.plot(t, U)
