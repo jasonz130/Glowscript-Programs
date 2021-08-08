@@ -1,0 +1,182 @@
+GlowScript 3.1 VPython
+
+unnamedvar = False
+v = vector(0,0,0)
+pause = False
+rotation = 0
+drag = False
+
+# Defining object dimensions and stylings
+class canvasdisplay:
+    def __init__(self, whichcanvas):
+        self.N = 200 # number of box objects used to create circular shape
+        self.R = 15 # inner radius of circular shape
+        self.h = 1 # height of release of ball above the bottom of circular shape
+        self.canvas = whichcanvas
+        whichcanvas.select()
+        self.initialplatform = cylinder(pos=vector(0, -self.R, 0), axis=vector(0, 1, 0), size=vector(self.h, 0.5, 2 * 0.1)) #Initial displacement location
+        
+        thick = 0.45 # thickness of circular shape
+        dtheta = 2 * pi / self.N
+        paint = color.yellow
+        red = True
+        boxes = [self.initialplatform]
+        
+        for i in range(self.N):
+            theta = i * dtheta
+            b = box(pos=(self.R + thick / 2) * vector(cos(theta), sin(theta), 0), size=vector(thick, 2 * (self.R + thick) * sin(dtheta / 2), thick))
+            if red:
+              b.color = color.yellow
+              red = False
+            else:
+              b.color = color.blue
+              red = True
+            b.rotate(angle=theta, axis=vector(0, 0, 1))
+            boxes.append(b)
+        
+        self.hull = compound(boxes)
+        
+        self.ball = sphere(pos=self.initialplatform.pos + self.initialplatform.axis, color=color.cyan, size=5 * 0.2 * vector(1, 1, 1)) #Ball position, size, colouring
+        
+       
+        self.trail = attach_trail(self.ball, radius=0.1 * self.ball.size.x, pps=50, retain=500, color=color.yellow, type = "curve") #Ball trail
+
+        self.reset()
+       
+    def reset(self):
+        global rotation
+        self.hull.rotate(angle=-rotation, axis=vector(0, 0, 1), origin=vector(0, 0, 0))
+        self.ball.pos = self.initialplatform.pos + self.initialplatform.axis
+        self.trail.clear()
+        rotation =  0
+    
+def mouse_control(display, vector1, vector2):
+    global pause
+    if pause: return
+    s = display.canvas
+
+    def down():
+        global drag, unnamedvar, v
+        
+        def set_v():
+            vector1.axis = s.mouse.pos - vector1.pos
+            vector2.axis = vector1.axis
+            if display is display1:
+                vector2.axis.x -= scalefactor * v0
+            else:
+                vector2.axis.x += scalefactor * v0
+                vector2.size.x = mag(vector2.axis)
+
+        set_v()
+        drag = True
+        def move():
+          global drag, pause
+          if pause: return
+          if drag: set_v()
+
+        def up():
+            global drag, unnamedvar, v, pause
+            if pause:
+                pause = False
+                return
+            drag = False
+            if mag(vector1.axis) <= display.ball.size.y / 2:
+                vector1.axis = vector(0, 0, 0)
+            elif mag(vector2.axis) <= display.ball.size.y / 2:
+                vector2.axis = vector(0, 0, 0)
+            if display is display1:
+                v = vector1.axis / scalefactor
+            else:
+                v = vector2.axis / scalefactor
+            unnamedvar = True
+            
+        s.bind("mousemove", move)
+        s.bind("mouseup", up)
+            
+    s.bind("mousedown", down)
+
+scene1 = canvas(width=430, height=400, align='left', userspin=False, userzoom=False, background = color.blue, opacity = 0.5)
+scene2 = canvas(width=430, height=400, align='left', userspin=False, userzoom=False, background = color.hsv_to_rgb(vector (0.2,0.5,0.3)))
+
+scene2.append_to_caption('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
+
+scene1.title = """<b>ROTATING FRAMES OF REFERENCE</b>
+Inertial frame on the left, rotating frame on the right.
+"""
+
+display1 = canvasdisplay(scene1)
+display2 = canvasdisplay(scene2)
+
+scene1.autoscale = scene2.autoscale = False
+
+# Angular speed of circular shape; period of rotation is 2*pi/omega
+omega = 1
+def S(arg):
+    global omega
+    S_text.text = 'Angular Speed = '+'<b>{:1.3f}</b>'.format(S.value)
+    omega = S.value
+S = slider(bind = S, min = 0.1, max = 5, value = 1)
+S_text = wtext(text='Angular Speed = '+'<b>{:1.3f}</b>'.format(S.value))
+
+deltat = 0.001 * 2 * pi / omega
+
+v0 = (display1.R - display1.h) * omega
+
+scalefactor = 5 / (display1.R * omega)
+v1 = arrow(canvas=scene1, pos=display1.ball.pos, color=color.green, axis=vector(0, 0, 0), shaftwidth=0.3, visible=False)
+
+v2 = arrow(canvas=scene2, pos=display2.ball.pos, color=color.red, axis=vector(0, 0, 0), shaftwidth=0.3, visible=False)
+
+instruction1 = label(canvas=scene1, pos=vector(0, display1.R / 2, 0), text = "<b>Drag initial velocity in the inertial frame</b>", visible= False, background = color.black, opacity = 0.5)
+
+instruction2 = label(canvas=scene2, pos=vector(0, display2.R / 2, 0), text = "<b>Or drag initial velocity relative to rotating frame</b>", visible=False, background = color.black, opacity = 0.2)
+
+mouse_click1 = label(canvas=scene1, pos=vector(0.8 * display1.R, -1 * display1.R, 0), text="Click to reset", visible=False, background = color.black, opacity = 0.5)
+
+mouse_click2 = label(canvas=scene2, pos=vector(0.8 * display2.R, -1 * display2.R, 0), text="Click to reset", visible=False, background = color.black, opacity = 0.5)
+
+mouse_control(display1, v1, v2)
+mouse_control(display2, v2, v1)
+
+while True:
+    display1.reset()
+    display2.reset()
+    v1.axis = vector(0,0,0)
+    v2.axis = vector(0,0,0)
+    v1.visible = v2.visible = True
+    instruction1.visible = instruction2.visible = True
+    while True:
+        rate (100)
+        if unnamedvar: break
+    v1.visible = v2.visible = False
+    instruction1.visible = instruction2.visible = False
+    r = vector(display1.ball.pos) # initialize r without making it equivalent to ball.pos
+    t = 0
+    while True:
+        rate(0.8/deltat) # slow down the plotting
+        rotation += omega * deltat
+        
+        display1.ball.rotate(angle=omega * deltat, axis=vector(0, 0, 1), origin=vector(0, 0, 0))
+        
+        display1.hull.rotate(angle=omega * deltat, axis=vector(0, 0, 1), origin=vector(0, 0, 0))
+        
+        r = r + v * deltat # update the actual position of the ball (in inertial frame)
+        display1.ball.pos = r
+        nwr = vector(r)
+        display2.ball.pos = nwr.rotate(angle=-omega * t, axis=vector(0, 0, 1))
+    
+        if mag(display1.ball.pos) >= display1.R: # if ball hits floor, break loop (stop program and ask for user reset)
+            direction = norm(display1.ball.pos)
+            display1.ball.pos = display1.R * direction
+            direction = norm(display2.ball.pos)
+            display2.ball.pos = display2.R * direction
+            break
+        t += deltat
+    mouse_click1.visible = mouse_click2.visible = True
+    pause = True
+    while True:
+        rate(100)
+        if not pause: break
+    unnamedvar = False
+    mouse_click1.visible = mouse_click2.visible = False
+    
